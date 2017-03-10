@@ -310,7 +310,7 @@ function createTipContent(body) {
 	var tip = E("div");
 		tip.className = "tip";
 		body.appendChild(tip);
-		tip.innerHTML = "<p>建议使用谷歌浏览器浏览</p><p>建议使用全屏浏览，谷歌浏览器和360浏览器默认按键为F11</p><p>QQ 1439080086</p>";
+		tip.innerHTML = "<p>建议使用chrome浏览器，F11全屏</p>";
 }
 
 function createMusicContent(body) {
