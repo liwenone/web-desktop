@@ -1,0 +1,292 @@
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>图案解锁</title>
+	</head>
+	<body></body>
+	<script>
+		var CANVAS_WIDTH = 310;
+		var CANVAS_HEIGHT = 520;
+
+        var OUTER_RADIUS = 35;
+        var INNER_RADIUS = 10;
+
+        var OUTER_STROKE_COLOR_NORMAL = "rgba(63, 164, 223, 0.7)";
+        var OUTER_FILL_COLOR_NORMAL = "rgba(94, 211, 229, 0.7)";
+        var INNER_STROKE_COLOR_NORMAL = "rgba(84, 169, 228, 0.7)";
+        var INNER_FILL_COLOR_NORMAL = "rgba(71, 167, 215, 0.7)";
+
+        var OUTER_STROKE_COLOR_TOUCH = "rgba(109, 222, 92, 0.7)";
+        var OUTER_FILL_COLOR_TOUCH = "rgba(172, 236, 162, 0.7)";
+        var INNER_STROKE_COLOR_TOUCH = "rgba(83, 209, 102, 0.7)";
+        var INNER_FILL_COLOR_TOUCH = "rgba(113, 217, 129, 0.7)";
+
+        var OUTER_STROKE_COLOR_ERROR = "rgba(255, 45, 45, 0.7)";
+        var OUTER_FILL_COLOR_ERROR = "rgba(255, 81, 81, 0.7)";
+        var INNER_STROKE_COLOR_ERROR = "rgba(255, 45, 45, 0.7)";
+        var INNER_FILL_COLOR_ERROR = "rgba(255, 81, 81, 0.7)";
+
+        var LINE_STROKE_COLOR_NORMAL = "rgba(109, 222, 92, 0.7)";
+        var LINE_STROKE_COLOR_ERROR = "rgba(255, 81, 81, 0.7)";
+
+		var CIRCLE_INTERVAL = 30;
+        var CIRCLE_MARGIN_HORIZONTAL_BORDER = (CANVAS_WIDTH - OUTER_RADIUS * 2 * 3  - 2 * CIRCLE_INTERVAL) / 2;
+        var CIRCLE_MARGIN_VERTICAL_BORDER = 170;
+
+        function Circle(x, y, id) {
+        	this.x = x;
+        	this.y = y;
+        	this.id = id,
+
+        	this.outer_stroke_color = OUTER_STROKE_COLOR_NORMAL;
+        	this.outer_fill_color = OUTER_FILL_COLOR_NORMAL;
+        	this.inner_stroke_color = INNER_STROKE_COLOR_NORMAL;
+        	this.inner_fill_color = INNER_FILL_COLOR_NORMAL;
+
+        	this.is_finish = false,
+
+        	this.setColor = function(outer_stroke_color, outer_fill_color, inner_stroke_color, inner_fill_color) {
+				this.outer_stroke_color = outer_stroke_color;
+	        	this.outer_fill_color = outer_fill_color;
+	        	this.inner_stroke_color = inner_stroke_color;
+	        	this.inner_fill_color = inner_fill_color;
+        	}
+
+        	this.checkTouch = function(m_x, m_y) {
+        		var distance = Math.sqrt(Math.pow(this.x - m_x, 2) + Math.pow(this.y - m_y, 2));
+        		if (distance < OUTER_RADIUS) {
+        			return true;
+        		} else {
+        			return false;
+        		}
+        	}
+
+        	this.draw = function(ctx) {
+        		ctx.save();
+        		ctx.beginPath();
+        		ctx.lineWidth = 2;
+        		ctx.strokeStyle = this.outer_stroke_color;
+        		ctx.fillStyle = this.outer_fill_color;
+        		ctx.arc(this.x, this.y, OUTER_RADIUS, 2 * Math.PI, 0, false);
+        		ctx.closePath();
+        		ctx.stroke();
+        		ctx.fill();
+
+        		ctx.beginPath();
+        		ctx.strokeStyle = this.inner_stroke_color;
+        		ctx.fillStyle = this.inner_fill_color;
+        		ctx.arc(this.x, this.y, INNER_RADIUS, 2 * Math.PI, 0, false);
+        		ctx.closePath();
+        		ctx.stroke();
+        		ctx.fill();
+        		ctx.restore();
+        	}
+        }
+
+        function Line(x, y) {
+        	this.start_x = x;
+        	this.start_y = y;
+
+        	this.end_x = x;
+        	this.end_y = y;
+
+        	this.stroke_color = LINE_STROKE_COLOR_NORMAL;
+        	this.is_finish = false;
+
+        	this.setEndXY = function(x, y) {
+        		this.end_x = x;
+        		this.end_y = y;
+        	}
+
+        	this.draw = function(ctx) {
+        		ctx.save();
+        		ctx.lineWidth = 3;
+        		ctx.lineJoin = "round";
+        		ctx.strokeStyle = this.stroke_color;
+        		ctx.beginPath();
+        		ctx.moveTo(this.start_x, this.start_y);
+        		ctx.lineTo(this.end_x, this.end_y);
+        		ctx.closePath();
+        		ctx.stroke();
+        		ctx.restore();
+        	}
+        }
+
+        function StatusBar() {
+        	this.draw = function(ctx) {
+        		ctx.save();
+        		ctx.fillStyle = "rgba(1, 1, 1, 0.7)";
+        		ctx.fillRect(0, 0, CANVAS_WIDTH, 25);
+        		ctx.restore();
+        	}
+        }
+
+        function Tip(x, y) {
+        	this.x = x;
+        	this.y = y;
+        	this.text = "解锁失败，请重试";
+
+        	this.draw = function(ctx) {
+        		ctx.save();
+        		ctx.font = "14px 微软雅黑";
+        		ctx.textAlign = "center";
+        		ctx.textBaseline = "top";
+        		ctx.fillStyle = "#FF5151";
+        		ctx.fillText(this.text, x, y);
+        		ctx.restore();
+        	}
+        }
+
+    	var canvas = document.createElement("canvas");
+            canvas.width = CANVAS_WIDTH;
+            canvas.height = CANVAS_HEIGHT;
+            canvas.style.display = "block";
+            canvas.style.margin = "20px auto";
+            canvas.style.backgroundImage = "url('http://img4.duitang.com/uploads/item/201406/27/20140627004739_nQwxv.jpeg')"; 
+            canvas.style.backgroundSize = CANVAS_WIDTH + "px " + CANVAS_HEIGHT + "px";
+            document.body.appendChild(canvas);
+    	var ctx = canvas.getContext("2d");
+
+    	var is_finish = false;
+    	var is_mouse_down = false;
+
+    	// 松开鼠标后，启动一个计数器，相当于结果的显示时间，这里为50 * 20 = 1000ms
+    	var wait_count_total = 50;
+    	var wait_count = 0;
+
+    	var correct_id_arr = [0, 4, 8, 5, 2, 1, 3, 6, 7]; // 正确的序列
+    	var line_id_arr = []; // 用于存储连接节点的序列
+
+		var statusbar = new StatusBar();
+    	var tip = new Tip(CANVAS_WIDTH / 2, 120);
+    	// 初始化连接线和节点圆列表
+    	var line_list = [];
+    	var circle_list = [];
+    		for (var i = 0; i < 3; i++) {
+    			for (var j = 0; j < 3; j++) {
+    				var x = CIRCLE_MARGIN_HORIZONTAL_BORDER + CIRCLE_INTERVAL * j + OUTER_RADIUS * (2 * j + 1);
+    				var y = CIRCLE_MARGIN_VERTICAL_BORDER + CIRCLE_INTERVAL * i + OUTER_RADIUS * (2 * i + 1);
+    				circle_list.push(new Circle(x, y, i * 3 + j));
+    			}
+    		}
+
+    	this.reset = function() {
+    		tip.text = "解锁失败，请重试";
+    		line_id_arr = [];
+    		line_list = [];
+
+    		for (var i = 0; i < circle_list.length; i++) {
+    			circle_list[i].setColor(OUTER_STROKE_COLOR_NORMAL, OUTER_FILL_COLOR_NORMAL, INNER_STROKE_COLOR_NORMAL, INNER_FILL_COLOR_NORMAL);
+    			circle_list[i].is_finish = false;
+    		}
+    	}
+
+    	this.checkIsCorrect = function() {
+    		var is_correct = false;
+    		if (correct_id_arr.length == line_id_arr.length) {
+    			var i;
+    			for(i = 0; i < correct_id_arr.length; i++) {
+    				if (correct_id_arr[i] != line_id_arr[i]) {
+    					break;
+    				}
+    			}
+
+    			if (i == correct_id_arr.length) {
+    				is_correct = true;
+    			}
+    		}
+
+    		if (!is_correct) { 
+    			// 设置解锁失败时的颜色
+    			for (var i = 0; i < correct_id_arr.length; i++) {
+					circle_list[i].setColor(OUTER_STROKE_COLOR_ERROR, OUTER_FILL_COLOR_ERROR, INNER_STROKE_COLOR_ERROR, INNER_FILL_COLOR_ERROR);
+        		}
+
+        		for (var i = 0; i < line_list.length; i++) {
+    				line_list[i].stroke_color = LINE_STROKE_COLOR_ERROR;
+        		}
+    		} else {
+    			tip.text = "解锁成功";
+    		}
+    	}
+
+    	this.addEventListener("mouseup", function(event) {
+    		if (is_mouse_down) {
+    			is_finish = true;
+    			is_mouse_down = false;
+
+    			line_list.pop();// 删除最后一根线
+
+    			checkIsCorrect();
+    		}
+    	}, false);
+
+    	this.addEventListener("mousedown", function(event) {
+    		if (is_finish) return;
+
+    		var start_x = event.pageX - canvas.offsetLeft;
+    		var start_y = event.pageY - canvas.offsetTop;
+
+    		for (var i = 0; i < circle_list.length; i++) {
+    			if (circle_list[i].checkTouch(start_x, start_y)) {
+    				line_id_arr.push(circle_list[i].id);
+
+    				circle_list[i].is_finish = true;
+    				circle_list[i].setColor(OUTER_STROKE_COLOR_TOUCH, OUTER_FILL_COLOR_TOUCH, INNER_STROKE_COLOR_TOUCH, INNER_FILL_COLOR_TOUCH);
+
+    				is_mouse_down = true;
+    				line_list.push(new Line(circle_list[i].x, circle_list[i].y));
+    				break;
+    			}
+    		}
+    	}, false);
+
+    	this.addEventListener("mousemove", function(event) {
+    		if (is_mouse_down) {
+    			var curr_x = event.pageX - canvas.offsetLeft;
+    			var curr_y = event.pageY - canvas.offsetTop;
+    			
+    			line_list[line_list.length - 1].setEndXY(curr_x, curr_y);
+
+    			for (var i = 0; i < circle_list.length; i++) {
+    				if (false == circle_list[i].is_finish && circle_list[i].checkTouch(curr_x, curr_y)) {
+    					line_id_arr.push(circle_list[i].id);
+
+    					circle_list[i].is_finish = true;
+	    				circle_list[i].setColor(OUTER_STROKE_COLOR_TOUCH, OUTER_FILL_COLOR_TOUCH, INNER_STROKE_COLOR_TOUCH, INNER_FILL_COLOR_TOUCH);
+
+    					line_list[line_list.length - 1].is_finish = true;
+						line_list[line_list.length - 1].setEndXY(circle_list[i].x, circle_list[i].y);
+    					
+    					line_list.push(new Line(circle_list[i].x, circle_list[i].y));
+    				}
+    			}
+    		}
+    	}, false);
+
+    	// 更新函数，绘制所有图形
+        this.setInterval(function() {
+        	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        	statusbar.draw(ctx);
+
+    		for (var i = 0; i < circle_list.length; i++) {
+    			circle_list[i].draw(ctx);
+    		}
+
+    		for (var i = 0; i < line_list.length; i++) {
+    			line_list[i].draw(ctx);
+    		}
+
+    		if (is_finish) {
+    			tip.draw(ctx);
+    			wait_count++;
+    			if (wait_count >= wait_count_total) {
+    				wait_count = 0;
+    				is_finish = false;
+    				reset();
+    			}
+    		}
+
+        }, 20, false);
+	</script>
+</html>

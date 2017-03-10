@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>picture matching</title>
+
+		<style>
+			*{padding:0px;margin: 0px;}
+			canvas{background: url("images/canvas_bg.jpg");}
+		</style>
+
+		<script>
+			function $(id) {
+				return document.getElementById(id);
+			}
+
+			function Rect(x, y, width, height) {
+				this.x = x;
+				this.y = y;
+				this.width = width;
+				this.height = height;
+
+				this.collision = function(x, y) {
+					if (this.x < x && x < (this.x + this.width) && this.y < y && y < (this.y + this.height)) {
+						return true;
+					} else {
+						return false;
+					}
+				}
+			}
+
+			function Picture(no, x, y, img, bg_img) {
+				this.no = no;
+				this.x = x;
+				this.y = y;
+
+				this.img = img;
+				this.bg_img = bg_img;
+
+				this.width = 150;
+				this.height = 200;
+
+				this.isChoose = false;
+
+				this.rect = function() {
+					return new Rect(this.x, this.y, this.width, this.height);
+				}
+
+				this.setChoose = function(isChoose) {
+					this.isChoose = isChoose;
+				}
+
+				this.getChoose = function() {
+					return this.isChoose;
+				}
+
+				this.getNo = function() {
+					return this.no;
+				}
+
+				this.draw = function(cxt) {
+					var img;
+					if (this.isChoose) {
+						img = this.img;
+					} else {
+						img = this.bg_img;
+					}
+					cxt.save();
+					//cxt.shadowColor = "green";
+					//cxt.shadowOffsetX = 0;
+    				//cxt.shadowOffsetY = 0;
+     				//cxt.shadowBlur = 20;
+                    cxt.strokeStyle = "gray";
+                    cxt.lineWidth = 2;
+					cxt.drawRoundRect(this.x, this.y, this.width, this.height, 10);
+					cxt.stroke();
+					cxt.clip();
+					cxt.drawImage(img, this.x, this.y, this.width, this.height);
+					cxt.restore();
+				}
+			}
+
+			window.onload = function() {
+				var canvas = $("canvas");
+				var cxt = canvas.getContext("2d");
+				var CANVAS_WIDTH = canvas.width;
+				var CANVAS_HEIGHT = canvas.height;
+    			CanvasRenderingContext2D.prototype.drawRoundRect = function (x, y, w, h, r) { 
+    				this.beginPath();
+				    this.moveTo(x+r, y);
+			        this.arcTo(x+w, y, x+w, y+h, r);
+			        this.arcTo(x+w, y+h, x, y+h, r);
+			        this.arcTo(x, y+h, x, y, r);
+			        this.arcTo(x, y, x+w, y, r);
+			        this.closePath();
+    			}
+
+				var imgs_src = ["1.jpg", "2.jpg", "3.jpg", "4.jpg", "bg.jpg"];
+				var img_loaded_num = 0;
+				var img_total_num = imgs_src.length;
+				var imgs = [];
+				for (var i = 0; i < img_total_num; i++) {
+					var img = new Image();
+						img.src = "images/" + imgs_src[i];
+						img.onload = function() {
+							img_loaded_num++;
+						}
+					imgs.push(img);
+				}
+				
+				var pictures = [];
+				var createInt = this.setInterval(createPictures, 100);
+				function createPictures() {
+					if (img_loaded_num != img_total_num) return;
+
+					var init_x = 40;
+					var init_y = 35;
+
+					var x = 0;
+					var y = 0;
+
+					var offset = 190;
+
+					var random_arr = [];
+					while (random_arr.length < 8) {
+						var random_num = parseInt(Math.random() * 8);
+						for (var i = 0; i < random_arr.length; i++) {
+							if (random_arr[i] == random_num) {
+								break;
+							}
+						}
+						if (i == random_arr.length) {
+							random_arr.push(random_num);
+						}
+					}
+
+					for (var i = 0; i < img_total_num * 2 - 1; i++) {
+
+						var j = random_arr.pop();
+						if (j > 3) {
+							x = init_x + (j - 4) * offset;
+							y = init_y + 230;
+						} else {
+							x = init_x + j * offset;
+							y = init_y;
+						}
+
+						var pic = new Picture(i % 4, x, y, imgs[i % 4], imgs[img_total_num - 1]);
+						pictures.push(pic);
+					}
+					this.clearInterval(createInt);
+					update();
+				}
+
+				function update() {
+					cxt.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+					for (var i = 0; i < pictures.length; i++) {
+						pictures[i].draw(cxt);
+					}
+				}
+
+				var choose_num = 0;
+				this.onclick = function(event) {
+					var x = event.clientX - canvas.offsetLeft;
+					var y = event.clientY - canvas.offsetTop;
+
+					for (var i = 0; i < pictures.length; i++) {
+						if (pictures[i].rect().collision(x, y) && pictures[i].getChoose() == false) {
+							if (choose_num == 2) return;
+
+							pictures[i].setChoose(true);
+							choose_num++;
+						}
+					}
+					update();
+					check_matching();
+				}
+
+				function check_matching() {
+					if (choose_num != 2) return; 
+
+					var pairs = [];
+					var num = 0;
+					for (var i = 0; i < pictures.length; i++) {
+						if (pictures[i].getChoose()) {
+							pairs[num] = pictures[i].getNo();
+							pairs[++num] = i;
+
+							num++;
+						}
+					}
+
+					var time = 0;
+					if (pairs[0] == pairs[2]) {
+						pictures.splice([pairs[3]], 1);
+						pictures.splice([pairs[1]], 1);
+						time = 300;
+					} else {
+						pictures[pairs[1]].setChoose(false);
+						pictures[pairs[3]].setChoose(false);
+						time = 800;
+					}
+					choose_num = 0;
+
+					this.setTimeout(update, time);
+				}
+
+			}
+		</script>
+
+	</head>
+
+	<body>
+		<canvas id="canvas" width="800px" height="500px"></canvas>
+	</body>
+
+</html>
